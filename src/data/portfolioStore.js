@@ -1,15 +1,8 @@
 /**
  * PORTFOLIO DATA STORE
  * ─────────────────────────────────────────────────────────────
- * Central store backed by a JSON file committed to the repo.
- * Admin changes are pushed via the GitHub Contents API, which
- * creates a commit so the hosted site updates on rebuild.
+ * Central store backed by a JSON file served from /public.
  */
-
-const GITHUB_OWNER = "nevil-codes";
-const GITHUB_REPO = "Portfolio";
-const DATA_PATH = "public/data.json";                // path inside the repo
-const GITHUB_API = "https://api.github.com";
 
 const DEFAULTS = {
     profile: {
@@ -172,52 +165,6 @@ export async function loadStore() {
         if (res.ok) return await res.json();
     } catch { /* network error → use defaults */ }
     return structuredClone(DEFAULTS);
-}
-
-/**
- * Save store by committing data.json to GitHub via the Contents API.
- * @param {object} data  – full portfolio data object
- * @param {string} token – GitHub Personal Access Token (fine-grained or classic with `repo` scope)
- */
-export async function saveStore(data, token) {
-    // 1. Get the current file's SHA (required for updates)
-    const fileUrl = `${GITHUB_API}/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${DATA_PATH}`;
-    const headers = {
-        Authorization: `token ${token}`,
-        Accept: "application/vnd.github.v3+json",
-    };
-
-    const existing = await fetch(fileUrl, { headers });
-    let sha;
-    if (existing.ok) {
-        const meta = await existing.json();
-        sha = meta.sha;
-    }
-
-    // 2. Commit the updated file
-    const body = {
-        message: "Update portfolio data",
-        content: btoa(unescape(encodeURIComponent(JSON.stringify(data, null, 2)))),
-        ...(sha && { sha }),
-    };
-
-    const res = await fetch(fileUrl, {
-        method: "PUT",
-        headers: { ...headers, "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-    });
-
-    if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err.message || "GitHub API error");
-    }
-}
-
-/** Reset to factory defaults (commits defaults to GitHub) */
-export async function resetStore(token) {
-    const fresh = structuredClone(DEFAULTS);
-    await saveStore(fresh, token);
-    return fresh;
 }
 
 export { DEFAULTS };

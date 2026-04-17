@@ -26,16 +26,17 @@ const DEFAULTS = {
     skills: [
         { name: "Python", category: "Lang" },
         { name: "Java", category: "Lang" },
+        { "name": "PHP", "category": "Lang" },
         { name: "NumPy", category: "Data" },
         { name: "Pandas", category: "Data" },
         { name: "Matplotlib", category: "Data" },
-        { name: "scikit-learn", category: "ML" },
-        { name: "TensorFlow", category: "ML" },
-        { name: "PyTorch", category: "ML" },
-        { name: "Keras", category: "ML" },
-        { name: "Flask", category: "Web" },
         { name: "Statistics", category: "Math" },
         { name: "Calculus", category: "Math" },
+        // { name: "scikit-learn", category: "ML" },
+        // { name: "TensorFlow", category: "ML" },
+        // { name: "PyTorch", category: "ML" },
+        // { name: "Keras", category: "ML" },
+        // { name: "Flask", category: "Web" },
     ],
 
     education: [

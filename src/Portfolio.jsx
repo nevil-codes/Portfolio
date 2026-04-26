@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Sun, Moon, ExternalLink, AlertCircle, GitBranch, Star, Award, Briefcase, MapPin, Calendar, Rocket } from "lucide-react";
+import { Sun, Moon, ExternalLink, GitBranch, Star, Award, Briefcase, MapPin, Calendar, Rocket, Send, Download } from "lucide-react";
 import { FaInstagram, FaLinkedin, FaTwitter, FaMedium, FaGithub, FaYoutube, FaDribbble } from "react-icons/fa";
 import { SiCoursera } from "react-icons/si";
 import { loadStore, DEFAULTS } from "./data/portfolioStore";
@@ -22,6 +22,7 @@ const CATEGORY_COLORS = {
   ML: "border-cyan-500/40  bg-cyan-500/10  text-cyan-300",
   Web: "border-emerald-500/40 bg-emerald-500/10 text-emerald-300",
   Math: "border-amber-500/40 bg-amber-500/10 text-amber-300",
+  Tool: "border-rose-500/40 bg-rose-500/10 text-rose-300",
 };
 
 // ─── Framer Motion variants ─────────────────────────────────────────────────
@@ -37,6 +38,20 @@ const staggerContainer = {
   hidden: {},
   visible: { transition: { staggerChildren: 0.06 } },
 };
+
+function getGitHubRepoPath(url) {
+  try {
+    const parsed = new URL(url);
+    if (parsed.hostname !== "github.com") return null;
+
+    const parts = parsed.pathname.split("/").filter(Boolean);
+    if (parts.length < 2) return null;
+
+    return `${parts[0]}/${parts[1]}`;
+  } catch {
+    return null;
+  }
+}
 
 // ─── Sub-Components ─────────────────────────────────────────────────────────
 function NavLink({ href, children }) {
@@ -67,30 +82,67 @@ function SectionHeading({ children }) {
   );
 }
 
-function SkeletonCard() {
-  return <div className="skeleton h-28 w-full" />;
+function MetricPill({ label, value, isDark }) {
+  return (
+    <div
+      className={`rounded-xl border px-3 py-2 text-xs ${
+        isDark ? "border-neutral-700 bg-neutral-900/70 text-neutral-300" : "border-neutral-200 bg-neutral-50 text-neutral-700"
+      }`}
+    >
+      <div className="text-[10px] uppercase tracking-wide opacity-60">{label}</div>
+      <div className="mt-1 font-medium">{value}</div>
+    </div>
+  );
 }
 
 // ─── Main Component ──────────────────────────────────────────────────────────
 export default function Portfolio() {
   const [store, setStore] = useState(DEFAULTS);
-  const [storeLoaded, setStoreLoaded] = useState(false);
-  const { profile, socials, skills: SKILLS, education, experience: EXPERIENCE, certifications: CERTIFICATIONS, currentProject: CURRENT_PROJECT, repoVisibility } = store;
+  const {
+    profile,
+    socials: rawSocials = [],
+    skills: rawSkills = [],
+    education: rawEducation = [],
+    experience: rawExperience = [],
+    certifications: rawCertifications = [],
+    currentProject: CURRENT_PROJECT = {},
+    projects: rawProjects = [],
+    sectionVisibility = {},
+  } = store;
+  const socials = rawSocials.filter((item) => item.visible !== false);
+  const SKILLS = rawSkills.filter((item) => item.visible !== false);
+  const education = rawEducation.filter((item) => item.visible !== false);
+  const EXPERIENCE = rawExperience.filter((item) => item.visible !== false);
+  const CERTIFICATIONS = rawCertifications.filter((item) => item.visible !== false);
+  const PROJECTS = rawProjects.filter((item) => item.visible !== false);
+  const showAbout = sectionVisibility.about !== false;
+  const showSkills = sectionVisibility.skills !== false && SKILLS.length > 0;
+  const showEducation = sectionVisibility.education !== false && education.length > 0;
+  const showExperience = sectionVisibility.experience !== false && EXPERIENCE.length > 0;
+  const showCertifications = sectionVisibility.certifications !== false && CERTIFICATIONS.length > 0;
+  const showCurrentProject = sectionVisibility.currentProject !== false && Boolean(CURRENT_PROJECT?.url);
+  const showGithubProjects = sectionVisibility.githubProjects !== false && PROJECTS.length > 0;
+  const showContact = sectionVisibility.contact !== false;
   const GITHUB_USERNAME = profile.githubUsername;
-  const REPO_VISIBILITY = Object.fromEntries(repoVisibility.map((r) => [r.name.toLowerCase(), r.visible]));
 
   const [theme, setTheme] = useState(
     () => localStorage.getItem("theme") || "dark"
   );
-  const [repos, setRepos] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(false);
   const [navScrolled, setNavScrolled] = useState(false);
-  const [currentProjectLangs, setCurrentProjectLangs] = useState([]);
+  const [projectStars, setProjectStars] = useState({});
+  const [contactForm, setContactForm] = useState({
+    name: "",
+    email: "",
+    subject: "",
+    message: "",
+    company: "",
+  });
+  const [contactStatus, setContactStatus] = useState("idle");
+  const [contactError, setContactError] = useState("");
 
   // Load portfolio data
   useEffect(() => {
-    loadStore().then((d) => { setStore(d); setStoreLoaded(true); });
+    loadStore().then((d) => { setStore(d); });
   }, []);
 
   // Apply theme class + persist
@@ -107,53 +159,87 @@ export default function Portfolio() {
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
-  // Fetch languages for current project repo
   useEffect(() => {
-    if (!storeLoaded) return;
-    let mounted = true;
-    async function fetchLangs() {
-      try {
-        const repoName = CURRENT_PROJECT.url.split("/").slice(-2).join("/");
-        const res = await fetch(`https://api.github.com/repos/${repoName}/languages`);
-        if (!res.ok) return;
-        const data = await res.json();
-        if (mounted) setCurrentProjectLangs(Object.keys(data));
-      } catch { /* ignore */ }
-    }
-    fetchLangs();
-    return () => { mounted = false; };
-  }, [storeLoaded]);
+    if (!showGithubProjects) return;
 
-  // Fetch GitHub repos
-  useEffect(() => {
-    if (!storeLoaded) return;
-    let mounted = true;
-    async function fetchRepos() {
-      try {
-        setLoading(true);
-        setError(false);
-        const res = await fetch(
-          `https://api.github.com/users/${GITHUB_USERNAME}/repos?per_page=100&sort=updated`
-        );
-        if (!res.ok) throw new Error("API error");
-        const data = await res.json();
-        if (!mounted) return;
-        const filtered = Array.isArray(data)
-          ? data.filter((r) => REPO_VISIBILITY[r.name.toLowerCase()] === true)
-          : [];
-        setRepos(filtered);
-      } catch {
-        if (mounted) setError(true);
-      } finally {
-        if (mounted) setLoading(false);
+    let cancelled = false;
+
+    async function fetchProjectStars() {
+      const entries = await Promise.all(
+        PROJECTS.map(async (project) => {
+          const repoPath = getGitHubRepoPath(project.url);
+          if (!repoPath) return [project.title, project.stars || 0];
+
+          try {
+            const response = await fetch(`https://api.github.com/repos/${repoPath}`);
+            if (!response.ok) return [project.title, project.stars || 0];
+
+            const data = await response.json();
+            return [project.title, data.stargazers_count ?? project.stars ?? 0];
+          } catch {
+            return [project.title, project.stars || 0];
+          }
+        })
+      );
+
+      if (!cancelled) {
+        setProjectStars(Object.fromEntries(entries));
       }
     }
-    fetchRepos();
-    return () => { mounted = false; };
-  }, [storeLoaded]);
+
+    fetchProjectStars();
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    showGithubProjects,
+    JSON.stringify(PROJECTS.map((project) => ({
+      title: project.title,
+      url: project.url,
+      stars: project.stars,
+    }))),
+  ]);
 
   const toggleTheme = () =>
     setTheme((t) => (t === "dark" ? "light" : "dark"));
+
+  function updateContactField(event) {
+    const { name, value } = event.target;
+    setContactForm((current) => ({ ...current, [name]: value }));
+  }
+
+  async function submitContactForm(event) {
+    event.preventDefault();
+    setContactStatus("sending");
+    setContactError("");
+
+    try {
+      const response = await fetch("/api/contact", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(contactForm),
+      });
+
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || "Message send failed");
+      }
+
+      setContactStatus("sent");
+      setContactForm({
+        name: "",
+        email: "",
+        subject: "",
+        message: "",
+        company: "",
+      });
+    } catch (error) {
+      setContactStatus("idle");
+      setContactError(error.message || "Message send failed");
+    }
+  }
 
   const isDark = theme === "dark";
 
@@ -178,21 +264,20 @@ export default function Portfolio() {
 
           <div className="flex items-center gap-6">
             <div className="hidden sm:flex items-center gap-6">
-              <NavLink href="#about">About</NavLink>
-              <NavLink href="#skills">Skills</NavLink>
-              <NavLink href="#education">Education</NavLink>
-              {EXPERIENCE.length > 0 && <NavLink href="#experience">Experience</NavLink>}
-              <NavLink href="#certifications">Certifications</NavLink>
-              <NavLink href="#current">Current</NavLink>
-              <NavLink href="#filmmaking">Filmmaking</NavLink>
-              <NavLink href="#projects">Projects</NavLink>
-              <NavLink href="#contact">Contact</NavLink>
+              {showAbout && <NavLink href="#about">About</NavLink>}
+              {showSkills && <NavLink href="#skills">Skills</NavLink>}
+              {showEducation && <NavLink href="#education">Education</NavLink>}
+              {showExperience && <NavLink href="#experience">Experience</NavLink>}
+              {showCertifications && <NavLink href="#certifications">Certifications</NavLink>}
+              {showCurrentProject && <NavLink href="#current">Current</NavLink>}
+              {showGithubProjects && <NavLink href="#projects">Projects</NavLink>}
+              {showContact && <NavLink href="#contact">Contact</NavLink>}
             </div>
 
             <span className={`px-3 py-1 text-xs rounded-full border font-medium
               ${isDark ? "bg-neutral-900/80 border-neutral-700 text-neutral-400"
                 : "bg-white border-neutral-300 text-neutral-500"}`}>
-              {loading ? "..." : error ? "?" : `${repos.length}`} repos
+              {showGithubProjects ? `${PROJECTS.length}` : "off"} projects
             </span>
 
             <button
@@ -268,18 +353,29 @@ export default function Portfolio() {
             className="flex flex-wrap gap-4 justify-center"
           >
             <a
-              href="#projects"
+              href={showGithubProjects ? "#projects" : `https://github.com/${GITHUB_USERNAME}`}
               className="px-6 py-2.5 rounded-full text-sm font-semibold bg-cyan-500 hover:bg-cyan-400 text-black transition-all duration-200 shadow-lg shadow-cyan-500/30 hover:shadow-cyan-400/40"
             >
-              View Projects
+              {showGithubProjects ? "View Projects" : "View GitHub"}
             </a>
+            {showContact && (
+              <a
+                href="#contact"
+                className={`px-6 py-2.5 rounded-full text-sm font-semibold border transition-all duration-200
+                  ${isDark ? "border-neutral-700 text-neutral-300 hover:border-cyan-500 hover:text-cyan-400"
+                    : "border-neutral-400 text-neutral-700 hover:border-cyan-500 hover:text-cyan-600"}`}
+              >
+                Get in Touch
+              </a>
+            )}
             <a
-              href="#contact"
+              href="/resume.pdf"
+              download
               className={`px-6 py-2.5 rounded-full text-sm font-semibold border transition-all duration-200
                 ${isDark ? "border-neutral-700 text-neutral-300 hover:border-cyan-500 hover:text-cyan-400"
                   : "border-neutral-400 text-neutral-700 hover:border-cyan-500 hover:text-cyan-600"}`}
             >
-              Get in Touch
+              Download Resume
             </a>
           </motion.div>
 
@@ -300,79 +396,85 @@ export default function Portfolio() {
         </section>
 
         {/* ── About ──────────────────────────────────────────────────── */}
-        <section id="about" className="max-w-4xl mx-auto px-6 py-20">
-          <SectionHeading>About Me</SectionHeading>
-          <motion.p
-            variants={fadeUp}
-            initial="hidden"
-            whileInView="visible"
-            viewport={{ once: true }}
-            className={`text-base md:text-lg leading-relaxed ${isDark ? "text-neutral-400" : "text-neutral-600"}`}
-          >
-            {profile.aboutText}
-          </motion.p>
-        </section>
-
-        {/* ── Skills ─────────────────────────────────────────────────── */}
-        <section id="skills" className={`py-20 ${isDark ? "bg-[#0d0f18]" : "bg-white/60"}`}>
-          <div className="max-w-6xl mx-auto px-6">
-            <SectionHeading>Skills</SectionHeading>
-            <motion.div
-              variants={staggerContainer}
+        {showAbout && (
+          <section id="about" className="max-w-4xl mx-auto px-6 py-20">
+            <SectionHeading>About Me</SectionHeading>
+            <motion.p
+              variants={fadeUp}
               initial="hidden"
               whileInView="visible"
               viewport={{ once: true }}
-              className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3"
+              className={`text-base md:text-lg leading-relaxed ${isDark ? "text-neutral-400" : "text-neutral-600"}`}
             >
-              {SKILLS.map((skill, i) => (
-                <motion.div
-                  key={skill.name}
-                  variants={fadeUp}
-                  custom={i}
-                  className={`skill-pill rounded-xl px-4 py-3 border text-center text-sm font-medium cursor-default
-                    ${CATEGORY_COLORS[skill.category]}
-                    ${isDark ? "" : "bg-white/70 border-neutral-200 text-neutral-700"}`}
-                >
-                  {skill.name}
-                  <div className="mt-1 text-[10px] opacity-60 font-normal">{skill.category}</div>
-                </motion.div>
-              ))}
-            </motion.div>
-          </div>
-        </section>
+              {profile.aboutText}
+            </motion.p>
+          </section>
+        )}
 
-        {/* ── Education ──────────────────────────────────────────────── */}
-        <section id="education" className="max-w-4xl mx-auto px-6 py-20">
-          <SectionHeading>Education</SectionHeading>
-          <div className="space-y-4">
-            {education.map((edu, i) => (
+        {/* ── Skills ─────────────────────────────────────────────────── */}
+        {showSkills && (
+          <section id="skills" className={`py-20 ${isDark ? "bg-[#0d0f18]" : "bg-white/60"}`}>
+            <div className="max-w-6xl mx-auto px-6">
+              <SectionHeading>Skills</SectionHeading>
               <motion.div
-                key={edu.degree}
-                variants={fadeUp}
-                custom={i}
+                variants={staggerContainer}
                 initial="hidden"
                 whileInView="visible"
                 viewport={{ once: true }}
-                className={`glow-card surface-card rounded-2xl p-5 border flex gap-4
-                  ${isDark ? "bg-[#131620] border-neutral-800" : "bg-white border-neutral-200"}`}
+                className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3"
               >
-                <div className="timeline-dot mt-1.5" />
-                <div>
-                  <div className="font-semibold text-base">{edu.degree}</div>
-                  <div className={`text-sm mt-0.5 ${isDark ? "text-neutral-400" : "text-neutral-500"}`}>
-                    {edu.school} · {edu.location}
-                  </div>
-                  <div className="mt-1.5 inline-block text-xs px-2.5 py-0.5 rounded-full border border-cyan-500/30 bg-cyan-500/10 text-cyan-400 font-medium">
-                    {edu.years}
-                  </div>
-                </div>
+                {SKILLS.map((skill, i) => (
+                  <motion.div
+                    key={skill.name}
+                    variants={fadeUp}
+                    custom={i}
+                    className={`skill-pill rounded-xl px-4 py-3 border text-center text-sm font-medium cursor-default
+                      ${CATEGORY_COLORS[skill.category]}
+                      ${isDark ? "" : "bg-white/70 border-neutral-200 text-neutral-700"}`}
+                  >
+                    {skill.name}
+                    <div className="mt-1 text-[10px] opacity-60 font-normal">{skill.category}</div>
+                  </motion.div>
+                ))}
               </motion.div>
-            ))}
-          </div>
-        </section>
+            </div>
+          </section>
+        )}
+
+        {/* ── Education ──────────────────────────────────────────────── */}
+        {showEducation && (
+          <section id="education" className="max-w-4xl mx-auto px-6 py-20">
+            <SectionHeading>Education</SectionHeading>
+            <div className="space-y-4">
+              {education.map((edu, i) => (
+                <motion.div
+                  key={edu.degree}
+                  variants={fadeUp}
+                  custom={i}
+                  initial="hidden"
+                  whileInView="visible"
+                  viewport={{ once: true }}
+                  className={`glow-card surface-card rounded-2xl p-5 border flex gap-4
+                    ${isDark ? "bg-[#131620] border-neutral-800" : "bg-white border-neutral-200"}`}
+                >
+                  <div className="timeline-dot mt-1.5" />
+                  <div>
+                    <div className="font-semibold text-base">{edu.degree}</div>
+                    <div className={`text-sm mt-0.5 ${isDark ? "text-neutral-400" : "text-neutral-500"}`}>
+                      {edu.school} · {edu.location}
+                    </div>
+                    <div className="mt-1.5 inline-block text-xs px-2.5 py-0.5 rounded-full border border-cyan-500/30 bg-cyan-500/10 text-cyan-400 font-medium">
+                      {edu.years}
+                    </div>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+          </section>
+        )}
 
         {/* ── Experience (only renders when EXPERIENCE array has entries) ── */}
-        {EXPERIENCE.length > 0 && (
+        {showExperience && (
           <section id="experience" className={`py-20 ${isDark ? "bg-[#0d0f18]" : "bg-white/60"}`}>
             <div className="max-w-4xl mx-auto px-6">
               <SectionHeading>Work Experience</SectionHeading>
@@ -437,26 +539,27 @@ export default function Portfolio() {
         )}
 
         {/* ── Certifications ─────────────────────────────────────────── */}
-        <section id="certifications" className="max-w-4xl mx-auto px-6 py-20">
-          <SectionHeading>Certifications</SectionHeading>
-          <motion.div
-            variants={staggerContainer}
-            initial="hidden"
-            whileInView="visible"
-            viewport={{ once: true }}
-            className="grid gap-4 sm:grid-cols-2"
-          >
-            {CERTIFICATIONS.map((cert, i) => (
-              <motion.a
-                key={cert.url}
-                variants={fadeUp}
-                custom={i}
-                href={cert.url}
-                target="_blank"
-                rel="noreferrer"
-                className={`glow-card group surface-card rounded-2xl p-6 border flex flex-col gap-3
-                  ${isDark ? "bg-[#131620] border-neutral-800" : "bg-white border-neutral-200"}`}
-              >
+        {showCertifications && (
+          <section id="certifications" className="max-w-4xl mx-auto px-6 py-20">
+            <SectionHeading>Certifications</SectionHeading>
+            <motion.div
+              variants={staggerContainer}
+              initial="hidden"
+              whileInView="visible"
+              viewport={{ once: true }}
+              className="grid gap-4 sm:grid-cols-2"
+            >
+              {CERTIFICATIONS.map((cert, i) => (
+                <motion.a
+                  key={cert.url}
+                  variants={fadeUp}
+                  custom={i}
+                  href={cert.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className={`glow-card group surface-card rounded-2xl p-6 border flex flex-col gap-3
+                    ${isDark ? "bg-[#131620] border-neutral-800" : "bg-white border-neutral-200"}`}
+                >
                 {/* Header row */}
                 <div className="flex items-center justify-between">
                   <div className={`flex items-center gap-2 text-xs font-semibold px-3 py-1 rounded-full border
@@ -486,25 +589,27 @@ export default function Portfolio() {
                     {cert.date}
                   </span>
                 </div>
-              </motion.a>
-            ))}
-          </motion.div>
-        </section>
+                </motion.a>
+              ))}
+            </motion.div>
+          </section>
+        )}
 
         {/* ── Currently Working On ────────────────────────────────────── */}
-        <section id="current" className="max-w-4xl mx-auto px-6 py-20">
-          <SectionHeading>Currently Working On</SectionHeading>
-          <motion.a
-            href={CURRENT_PROJECT.url}
-            target="_blank"
-            rel="noreferrer"
-            variants={fadeUp}
-            initial="hidden"
-            whileInView="visible"
-            viewport={{ once: true }}
-            className={`glow-card surface-card group block rounded-2xl p-6 border cursor-pointer transition
-              ${isDark ? "bg-[#131620] border-neutral-800" : "bg-white border-neutral-200"}`}
-          >
+        {showCurrentProject && (
+          <section id="current" className="max-w-4xl mx-auto px-6 py-20">
+            <SectionHeading>Currently Working On</SectionHeading>
+            <motion.a
+              href={CURRENT_PROJECT.url}
+              target="_blank"
+              rel="noreferrer"
+              variants={fadeUp}
+              initial="hidden"
+              whileInView="visible"
+              viewport={{ once: true }}
+              className={`glow-card surface-card group block rounded-2xl p-6 border cursor-pointer transition
+                ${isDark ? "bg-[#131620] border-neutral-800" : "bg-white border-neutral-200"}`}
+            >
             {/* Status badge */}
             <div className="flex items-center justify-between mb-4">
               <span className="flex items-center gap-2 text-xs font-semibold px-3 py-1 rounded-full border bg-emerald-500/15 border-emerald-500/40 text-emerald-400">
@@ -520,241 +625,323 @@ export default function Portfolio() {
               <h3 className="font-semibold text-lg">{CURRENT_PROJECT.title}</h3>
             </div>
 
+            {CURRENT_PROJECT.tagline && (
+              <p className={`text-sm font-medium mb-3 ${isDark ? "text-cyan-300" : "text-cyan-700"}`}>
+                {CURRENT_PROJECT.tagline}
+              </p>
+            )}
+
             {/* Description */}
             <p className={`text-sm leading-relaxed mb-4 ${isDark ? "text-neutral-400" : "text-neutral-600"}`}>
               {CURRENT_PROJECT.description}
             </p>
 
-            {/* Tech stack (from GitHub) */}
-            {currentProjectLangs.length > 0 && (
-              <div className="flex flex-wrap gap-2">
-                {currentProjectLangs.map((t) => (
+            <div className="grid gap-4 md:grid-cols-2">
+              {CURRENT_PROJECT.problem && (
+                <div>
+                  <div className={`mb-2 text-xs font-semibold uppercase tracking-wide ${isDark ? "text-neutral-500" : "text-neutral-500"}`}>
+                    Problem
+                  </div>
+                  <p className={`text-sm leading-relaxed ${isDark ? "text-neutral-400" : "text-neutral-600"}`}>
+                    {CURRENT_PROJECT.problem}
+                  </p>
+                </div>
+              )}
+              {CURRENT_PROJECT.model && (
+                <div>
+                  <div className={`mb-2 text-xs font-semibold uppercase tracking-wide ${isDark ? "text-neutral-500" : "text-neutral-500"}`}>
+                    Model / Approach
+                  </div>
+                  <p className={`text-sm leading-relaxed ${isDark ? "text-neutral-400" : "text-neutral-600"}`}>
+                    {CURRENT_PROJECT.model}
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {CURRENT_PROJECT.metrics?.length > 0 && (
+              <div className="mt-4 grid gap-3 sm:grid-cols-3">
+                {CURRENT_PROJECT.metrics.map((metric) => (
+                  <MetricPill
+                    key={`${CURRENT_PROJECT.title}-${metric.label}`}
+                    label={metric.label}
+                    value={metric.value}
+                    isDark={isDark}
+                  />
+                ))}
+              </div>
+            )}
+
+            {CURRENT_PROJECT.tools?.length > 0 && (
+              <div className="mt-4 flex flex-wrap gap-2">
+                {CURRENT_PROJECT.tools.map((tool) => (
                   <span
-                    key={t}
+                    key={tool}
                     className={`text-xs px-2.5 py-1 rounded-full border font-medium
                       ${isDark ? "bg-cyan-500/10 border-cyan-500/30 text-cyan-400"
                         : "bg-cyan-50 border-cyan-200 text-cyan-700"}`}
                   >
-                    {t}
+                    {tool}
                   </span>
                 ))}
               </div>
             )}
-          </motion.a>
-        </section>
-
-        {/* ── Beyond the Code — Filmmaking ─────────────────────────── */}
-        <section id="filmmaking" className={`py-20 ${isDark ? "bg-[#0d0f18]" : "bg-white/60"}`}>
-          <div className="max-w-4xl mx-auto px-6">
-            <SectionHeading>Beyond the Code</SectionHeading>
-            <motion.div
-              variants={fadeUp}
-              initial="hidden"
-              whileInView="visible"
-              viewport={{ once: true }}
-              className="relative overflow-hidden rounded-2xl border group"
-              style={{
-                background: isDark
-                  ? "linear-gradient(135deg, #0a0c12 0%, #1a1025 50%, #0a0c12 100%)"
-                  : "linear-gradient(135deg, #f0f4f8 0%, #e8e0f0 50%, #f0f4f8 100%)",
-                borderColor: isDark ? "rgba(139,92,246,0.3)" : "rgba(139,92,246,0.2)",
-              }}
-            >
-              {/* Film grain overlay */}
-              <div
-                className="absolute inset-0 opacity-[0.04] pointer-events-none"
-                style={{
-                  backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E")`,
-                }}
-              />
-
-              {/* Letterbox bars */}
-              <div className={`h-3 w-full ${isDark ? "bg-black" : "bg-neutral-900"}`} />
-
-              <div className="relative px-8 py-12 sm:px-12 sm:py-16 flex flex-col sm:flex-row items-center gap-8">
-                {/* Play button */}
-                <div className="flex-shrink-0">
-                  <div className={`w-20 h-20 rounded-full flex items-center justify-center border-2 transition-all duration-300 group-hover:scale-110 group-hover:shadow-lg
-                    ${isDark
-                      ? "border-violet-400/60 bg-violet-500/10 shadow-violet-500/20 group-hover:shadow-violet-500/40"
-                      : "border-violet-400 bg-violet-50 shadow-violet-300/30 group-hover:shadow-violet-400/40"}`}
-                  >
-                    <svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor" className={`ml-1 ${isDark ? "text-violet-300" : "text-violet-500"}`}>
-                      <polygon points="5,3 19,12 5,21" />
-                    </svg>
-                  </div>
-                </div>
-
-                {/* Content */}
-                <div className="text-center sm:text-left flex-1">
-                  <div className={`text-xs font-medium tracking-[0.2em] uppercase mb-2 ${isDark ? "text-violet-400/80" : "text-violet-500"}`}>
-                    Another side of me
-                  </div>
-                  <h3 className="text-2xl sm:text-3xl font-bold font-[Outfit] mb-2" style={{
-                    background: "linear-gradient(135deg, #c084fc, #f472b6)",
-                    WebkitBackgroundClip: "text",
-                    WebkitTextFillColor: "transparent",
-                  }}>
-                    Frames of Nick
-                  </h3>
-                  <p className={`text-sm leading-relaxed max-w-md mb-6 ${isDark ? "text-neutral-400" : "text-neutral-600"}`}>
-                    When I'm not building AI models, I'm behind a camera — crafting stories, one frame at a time.
-                  </p>
-                  <a
-                    href="/filmmaking"
-                    className="inline-flex items-center gap-2 px-6 py-2.5 rounded-full text-sm font-semibold transition-all duration-200 shadow-lg
-                      bg-gradient-to-r from-violet-500 to-pink-500 hover:from-violet-400 hover:to-pink-400 text-white shadow-violet-500/30 hover:shadow-violet-400/40"
-                  >
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <polygon points="5,3 19,12 5,21" />
-                    </svg>
-                    Explore My Work
-                  </a>
-                </div>
-              </div>
-
-              {/* Letterbox bar bottom */}
-              <div className={`h-3 w-full ${isDark ? "bg-black" : "bg-neutral-900"}`} />
-            </motion.div>
-          </div>
-        </section>
+            </motion.a>
+          </section>
+        )}
 
         {/* ── Projects ───────────────────────────────────────────────── */}
-        <section id="projects" className={`py-20 ${isDark ? "bg-[#0d0f18]" : "bg-white/60"}`}>
-          <div className="max-w-6xl mx-auto px-6">
-            <SectionHeading>GitHub Projects</SectionHeading>
-
-            {loading && (
-              <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3">
-                {Array.from({ length: 6 }).map((_, i) => (
-                  <SkeletonCard key={i} />
-                ))}
-              </div>
-            )}
-
-            {error && (
-              <div className={`flex items-center gap-3 p-5 rounded-2xl border
-                ${isDark ? "bg-red-900/20 border-red-700/40 text-red-400"
-                  : "bg-red-50 border-red-200 text-red-500"}`}>
-                <AlertCircle size={20} />
-                <span className="text-sm">
-                  Couldn't load repositories. Check your connection or visit{" "}
-                  <a
-                    href={`https://github.com/${GITHUB_USERNAME}`}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="underline"
-                  >
-                    GitHub directly
-                  </a>
-                  .
-                </span>
-              </div>
-            )}
-
-            {!loading && !error && (
+        {showGithubProjects && (
+          <section id="projects" className={`py-20 ${isDark ? "bg-[#0d0f18]" : "bg-white/60"}`}>
+            <div className="max-w-6xl mx-auto px-6">
+              <SectionHeading>Selected AI / ML Projects</SectionHeading>
               <motion.div
                 variants={staggerContainer}
                 initial="hidden"
                 whileInView="visible"
                 viewport={{ once: true }}
-                className="grid gap-4 sm:grid-cols-2 md:grid-cols-3"
+                className="grid gap-5 lg:grid-cols-2"
               >
-                {repos.map((repo, i) => (
+                {PROJECTS.map((project, i) => (
                   <motion.a
-                    key={repo.id}
+                    key={project.title}
                     variants={fadeUp}
-                    custom={i % 6}
-                    href={repo.html_url}
+                    custom={i}
+                    href={project.url}
                     target="_blank"
                     rel="noreferrer"
                     className={`glow-card surface-card group block rounded-2xl p-5 border transition
                       ${isDark ? "bg-[#131620] border-neutral-800" : "bg-white border-neutral-200"}`}
                   >
-                    <div className="flex items-start justify-between gap-2 mb-2">
-                      <div className="flex items-center gap-2 min-w-0">
-                        <GitBranch size={14} className="text-cyan-500 flex-shrink-0" />
-                        <span className={`font-semibold text-sm truncate
-                          ${isDark ? "text-cyan-300 group-hover:text-cyan-200"
-                            : "text-cyan-700 group-hover:text-cyan-600"}`}>
-                          {repo.name}
-                        </span>
+                    <div className="flex items-start justify-between gap-3 mb-3">
+                      <div className="min-w-0">
+                        {project.category && (
+                          <div className={`mb-2 text-[10px] font-semibold uppercase tracking-[0.18em] ${isDark ? "text-cyan-400/80" : "text-cyan-700"}`}>
+                            {project.category}
+                          </div>
+                        )}
+                        <div className="flex items-center gap-2 min-w-0">
+                          <GitBranch size={14} className="text-cyan-500 flex-shrink-0" />
+                          <span className={`font-semibold text-base truncate
+                            ${isDark ? "text-cyan-300 group-hover:text-cyan-200"
+                              : "text-cyan-700 group-hover:text-cyan-600"}`}>
+                            {project.title}
+                          </span>
+                        </div>
                       </div>
-                      <ExternalLink size={13} className={`flex-shrink-0 transition-opacity opacity-0 group-hover:opacity-100 ${isDark ? "text-neutral-500" : "text-neutral-400"}`} />
+                      <div className="flex items-center gap-2 flex-shrink-0">
+                        {(projectStars[project.title] ?? project.stars) > 0 && (
+                          <span className="flex items-center gap-1 text-xs text-amber-400">
+                            <Star size={11} /> {projectStars[project.title] ?? project.stars}
+                          </span>
+                        )}
+                        <ExternalLink size={13} className={`transition-opacity opacity-0 group-hover:opacity-100 ${isDark ? "text-neutral-500" : "text-neutral-400"}`} />
+                      </div>
                     </div>
 
-                    {repo.description && (
-                      <p className={`text-xs leading-relaxed line-clamp-2 mb-3
-                        ${isDark ? "text-neutral-500" : "text-neutral-500"}`}>
-                        {repo.description}
+                    {project.tagline && (
+                      <p className={`text-sm font-medium mb-3 ${isDark ? "text-neutral-300" : "text-neutral-700"}`}>
+                        {project.tagline}
                       </p>
                     )}
 
-                    <div className="flex items-center gap-3 mt-auto">
-                      {repo.language && (
-                        <span className={`text-xs px-2 py-0.5 rounded-full border
-                          ${isDark ? "bg-neutral-800 border-neutral-700 text-neutral-400"
-                            : "bg-neutral-100 border-neutral-200 text-neutral-500"}`}>
-                          {repo.language}
-                        </span>
-                      )}
-                      {repo.stargazers_count > 0 && (
-                        <span className="flex items-center gap-1 text-xs text-amber-400">
-                          <Star size={11} /> {repo.stargazers_count}
-                        </span>
-                      )}
+                    {project.description && (
+                      <p className={`text-sm leading-relaxed mb-4
+                        ${isDark ? "text-neutral-400" : "text-neutral-600"}`}>
+                        {project.description}
+                      </p>
+                    )}
+
+                    <div className="grid gap-4 md:grid-cols-2">
+                      <div>
+                        <div className={`mb-2 text-[10px] font-semibold uppercase tracking-wide ${isDark ? "text-neutral-500" : "text-neutral-500"}`}>
+                          Problem
+                        </div>
+                        <p className={`text-xs leading-relaxed ${isDark ? "text-neutral-400" : "text-neutral-600"}`}>
+                          {project.problem || "Add problem statement in data.json"}
+                        </p>
+                      </div>
+                      <div>
+                        <div className={`mb-2 text-[10px] font-semibold uppercase tracking-wide ${isDark ? "text-neutral-500" : "text-neutral-500"}`}>
+                          Model / Approach
+                        </div>
+                        <p className={`text-xs leading-relaxed ${isDark ? "text-neutral-400" : "text-neutral-600"}`}>
+                          {project.model || "Add model or approach in data.json"}
+                        </p>
+                      </div>
                     </div>
+
+                    {project.metrics?.length > 0 && (
+                      <div className="mt-4 grid gap-3 sm:grid-cols-3">
+                        {project.metrics.map((metric) => (
+                          <MetricPill
+                            key={`${project.title}-${metric.label}`}
+                            label={metric.label}
+                            value={metric.value}
+                            isDark={isDark}
+                          />
+                        ))}
+                      </div>
+                    )}
+
+                    {project.tools?.length > 0 && (
+                      <div className="mt-4 flex flex-wrap gap-2">
+                        {project.tools.map((tool) => (
+                          <span
+                            key={`${project.title}-${tool}`}
+                            className={`text-xs px-2 py-0.5 rounded-full border
+                              ${isDark ? "bg-neutral-800 border-neutral-700 text-neutral-400"
+                                : "bg-neutral-100 border-neutral-200 text-neutral-500"}`}
+                          >
+                            {tool}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+
+                    {project.languages?.length > 0 && (
+                      <div className="mt-4 flex flex-wrap items-center gap-2">
+                        {project.languages.map((language) => (
+                          <span
+                            key={`${project.title}-${language}`}
+                            className={`text-xs px-2 py-0.5 rounded-full border
+                              ${isDark ? "bg-cyan-500/10 border-cyan-500/30 text-cyan-400"
+                                : "bg-cyan-50 border-cyan-200 text-cyan-700"}`}
+                          >
+                            {language}
+                          </span>
+                        ))}
+                      </div>
+                    )}
                   </motion.a>
                 ))}
               </motion.div>
-            )}
-
-            {!loading && !error && (
-              <motion.div
-                variants={fadeUp}
-                initial="hidden"
-                whileInView="visible"
-                viewport={{ once: true }}
-                className="mt-8 text-center"
-              >
-                <a
-                  href={`https://github.com/${GITHUB_USERNAME}`}
-                  target="_blank"
-                  rel="noreferrer"
-                  className={`inline-flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-medium border transition
-                    ${isDark ? "border-neutral-700 text-neutral-400 hover:border-cyan-500 hover:text-cyan-400"
-                      : "border-neutral-300 text-neutral-500 hover:border-cyan-500 hover:text-cyan-600"}`}
-                >
-                  <FaGithub size={16} /> View all on GitHub
-                </a>
-              </motion.div>
-            )}
-          </div>
-        </section>
+            </div>
+          </section>
+        )}
 
         {/* ── Contact ────────────────────────────────────────────────── */}
-        <section id="contact" className="max-w-4xl mx-auto px-6 py-20">
-          <SectionHeading>Get in Touch</SectionHeading>
-          <motion.div
-            variants={fadeUp}
-            initial="hidden"
-            whileInView="visible"
-            viewport={{ once: true }}
-            className={`rounded-2xl p-8 border text-center glow-card
-              ${isDark ? "bg-[#131620] border-neutral-800" : "bg-white border-neutral-200"}`}
-          >
-            <p className={`mb-4 text-base ${isDark ? "text-neutral-400" : "text-neutral-600"}`}>
-              I'm open to internships, collaborations, and interesting AI/ML projects.
-              Drop me a line!
-            </p>
-            <a
-              href={`mailto:${profile.email}`}
-              className="inline-block px-8 py-3 rounded-full font-semibold text-sm bg-cyan-500 hover:bg-cyan-400 text-black transition-all duration-200 shadow-lg shadow-cyan-500/30 hover:shadow-cyan-400/40"
+        {showContact && (
+          <section id="contact" className="max-w-4xl mx-auto px-6 py-20">
+            <SectionHeading>Get in Touch</SectionHeading>
+            <motion.div
+              variants={fadeUp}
+              initial="hidden"
+              whileInView="visible"
+              viewport={{ once: true }}
+              className={`rounded-2xl p-8 border glow-card
+                ${isDark ? "bg-[#131620] border-neutral-800" : "bg-white border-neutral-200"}`}
             >
-              {profile.email}
-            </a>
-          </motion.div>
-        </section>
+              <div className="grid gap-8 lg:grid-cols-[0.9fr_1.1fr]">
+                <div>
+                  <p className={`mb-6 text-base ${isDark ? "text-neutral-400" : "text-neutral-600"}`}>
+                    I'm open to internships, collaborations, and interesting AI/ML projects.
+                    Send message here. I get email notification.
+                  </p>
+                  <div className="space-y-4">
+                    <a
+                      href={`mailto:${profile.email}`}
+                      className={`block rounded-2xl border px-4 py-4 text-sm transition
+                        ${isDark ? "border-neutral-800 bg-black/20 text-neutral-300 hover:border-cyan-500/40 hover:text-white"
+                          : "border-neutral-200 bg-neutral-50 text-neutral-700 hover:border-cyan-500 hover:text-neutral-900"}`}
+                    >
+                      {profile.email}
+                    </a>
+                    <a
+                      href="/resume.pdf"
+                      download
+                      className={`inline-flex items-center gap-2 rounded-2xl border px-5 py-3 text-sm font-semibold transition
+                        ${isDark ? "border-neutral-700 text-neutral-300 hover:border-cyan-500 hover:text-cyan-400"
+                          : "border-neutral-300 text-neutral-700 hover:border-cyan-500 hover:text-cyan-600"}`}
+                    >
+                      <Download size={16} />
+                      Download Resume
+                    </a>
+                  </div>
+                </div>
+
+                <form onSubmit={submitContactForm} className="grid gap-4">
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <input
+                      name="name"
+                      value={contactForm.name}
+                      onChange={updateContactField}
+                      required
+                      placeholder="Your name"
+                      className={`rounded-2xl border px-4 py-3 text-sm outline-none transition
+                        ${isDark ? "border-neutral-700 bg-[#0a0c12] text-white focus:border-cyan-500"
+                          : "border-neutral-300 bg-white text-neutral-900 focus:border-cyan-500"}`}
+                    />
+                    <input
+                      type="email"
+                      name="email"
+                      value={contactForm.email}
+                      onChange={updateContactField}
+                      required
+                      placeholder="Your email"
+                      className={`rounded-2xl border px-4 py-3 text-sm outline-none transition
+                        ${isDark ? "border-neutral-700 bg-[#0a0c12] text-white focus:border-cyan-500"
+                          : "border-neutral-300 bg-white text-neutral-900 focus:border-cyan-500"}`}
+                    />
+                  </div>
+
+                  <input
+                    name="subject"
+                    value={contactForm.subject}
+                    onChange={updateContactField}
+                    placeholder="Subject"
+                    className={`rounded-2xl border px-4 py-3 text-sm outline-none transition
+                      ${isDark ? "border-neutral-700 bg-[#0a0c12] text-white focus:border-cyan-500"
+                        : "border-neutral-300 bg-white text-neutral-900 focus:border-cyan-500"}`}
+                  />
+
+                  <textarea
+                    name="message"
+                    value={contactForm.message}
+                    onChange={updateContactField}
+                    required
+                    rows={7}
+                    placeholder="Your message"
+                    className={`rounded-2xl border px-4 py-3 text-sm outline-none transition
+                      ${isDark ? "border-neutral-700 bg-[#0a0c12] text-white focus:border-cyan-500"
+                        : "border-neutral-300 bg-white text-neutral-900 focus:border-cyan-500"}`}
+                  />
+
+                  <input
+                    type="text"
+                    name="company"
+                    value={contactForm.company}
+                    onChange={updateContactField}
+                    tabIndex="-1"
+                    autoComplete="off"
+                    className="hidden"
+                  />
+
+                  {contactError && (
+                    <div className="rounded-2xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300">
+                      {contactError}
+                    </div>
+                  )}
+
+                  {contactStatus === "sent" && (
+                    <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-300">
+                      Message sent. I will be notified.
+                    </div>
+                  )}
+
+                  <button
+                    type="submit"
+                    disabled={contactStatus === "sending"}
+                    className="inline-flex items-center justify-center gap-2 rounded-2xl bg-cyan-500 px-5 py-3 text-sm font-semibold text-black transition hover:bg-cyan-400 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    <Send size={16} />
+                    {contactStatus === "sending" ? "Sending..." : "Send Message"}
+                  </button>
+                </form>
+              </div>
+            </motion.div>
+          </section>
+        )}
 
         {/* ── Footer ─────────────────────────────────────────────────── */}
         <footer className={`py-10 border-t ${isDark ? "border-neutral-800/60" : "border-neutral-200"}`}>

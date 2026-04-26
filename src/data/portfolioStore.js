@@ -5,15 +5,26 @@
  */
 
 const DEFAULTS = {
+    sectionVisibility: {
+        about: true,
+        skills: true,
+        education: true,
+        experience: true,
+        certifications: true,
+        currentProject: true,
+        githubProjects: true,
+        contact: true,
+    },
+
     profile: {
         name: "Nevil Amraniya",
         tagline:
-            "AI / ML Enthusiast & CS Student — building intelligent systems, one model at a time.",
+            "ML-focused Computer Science student building data-driven products with Python, statistics, and modern web tooling.",
         location: "Essen, Germany",
         email: "framesofnevil@gmail.com",
         githubUsername: "nevil-codes",
         aboutText:
-            "I'm passionate about Artificial Intelligence and Machine Learning — eager to explore data, build predictive models, and create impactful applications. Currently pursuing a BSc in Computer Science and Digital Technologies at FOM University of Applied Sciences, Essen, Germany. I love turning complex data into tangible solutions and I'm constantly looking to collaborate on open-source AI projects.",
+            "I'm an ML-focused Computer Science student interested in applied machine learning, analytics, and intelligent product design. I enjoy turning ambiguous problems into structured datasets, experiments, and user-facing tools. Right now I'm building projects around real-time systems, forecasting ideas, and data-driven decision making while looking for internships where I can contribute across data preparation, model development, evaluation, and deployment.",
     },
 
     socials: [
@@ -25,18 +36,16 @@ const DEFAULTS = {
 
     skills: [
         { name: "Python", category: "Lang" },
+        { name: "SQL", category: "Lang" },
         { name: "Java", category: "Lang" },
-        { "name": "PHP", "category": "Lang" },
         { name: "NumPy", category: "Data" },
         { name: "Pandas", category: "Data" },
         { name: "Matplotlib", category: "Data" },
+        { name: "scikit-learn", category: "ML" },
         { name: "Statistics", category: "Math" },
         { name: "Calculus", category: "Math" },
-        // { name: "scikit-learn", category: "ML" },
-        // { name: "TensorFlow", category: "ML" },
-        // { name: "PyTorch", category: "ML" },
-        // { name: "Keras", category: "ML" },
-        // { name: "Flask", category: "Web" },
+        { name: "React", category: "Web" },
+        { name: "Git", category: "Tool" },
     ],
 
     education: [
@@ -54,21 +63,7 @@ const DEFAULTS = {
         },
     ],
 
-    experience: [
-        {
-            title: "Machine Learning Intern",
-            company: "Acme Corp",
-            location: "Berlin, Germany",
-            from: "Jun 2024",
-            to: "Aug 2024",
-            url: "https://acme.com",
-            bullets: [
-                "Built a recommendation engine with PyTorch, improving CTR by 12%.",
-                "Automated data-cleaning pipeline reducing preprocessing time by 40%.",
-                "Collaborated with a cross-functional team of 6 engineers.",
-            ],
-        },
-    ],
+    experience: [],
 
     certifications: [
         {
@@ -83,79 +78,66 @@ const DEFAULTS = {
 
     currentProject: {
         title: "QLess",
+        tagline: "Queue management platform for reducing customer wait-time uncertainty.",
         description:
-            "A queue management system designed to reduce wait times and improve customer experience through smart scheduling and real-time updates.",
+            "QLess is a real-time queue management system aimed at improving customer flow, reducing manual coordination, and making wait-time communication more transparent.",
         url: "https://github.com/nevil-codes/QLess",
         status: "In Progress",
+        problem:
+            "Physical queues create poor customer visibility and inconsistent staff-side scheduling.",
+        model:
+            "Current version focuses on scheduling logic and real-time updates. Forecasting-based queue prediction is planned as next iteration.",
+        metrics: [
+            { label: "Stage", value: "In Development" },
+            { label: "Focus", value: "Real-Time Queue Updates" },
+            { label: "Target", value: "Lower Wait-Time Uncertainty" },
+        ],
+        tools: ["JavaScript", "React", "Node.js"],
     },
 
-    filmmaking: {
-        brandName: "Frames of Nick",
-        tagline: "Stories told through frames",
-        about: "When I'm not building AI models, I'm behind a camera — crafting cinematic stories, exploring visual narratives, and turning everyday moments into art. I also love working with models, capturing their essence through creative portrait and fashion photography.",
-        roles: ["Director", "Cinematographer", "Editor", "Model Photographer"],
-        equipment: ["Sony A7III", "DJI RS3", "DaVinci Resolve", "85mm f/1.4 Lens", "Studio Lighting Kit"],
-        services: [
-            { title: "Model Photo Shoots", icon: "camera", description: "Professional portrait and fashion photography sessions — from studio setups to outdoor locations. I work with models to create stunning visual stories through creative direction, lighting, and composition.", features: ["Portrait Photography", "Fashion Shoots", "Creative Direction", "Studio & Outdoor", "Post-Production Editing"] },
-            { title: "Short Films & Music Videos", icon: "film", description: "End-to-end video production from concept to final cut — cinematic storytelling that moves and inspires.", features: ["Scriptwriting", "Cinematography", "Color Grading", "Sound Design", "Final Edit"] },
-            { title: "Brand & Commercial Content", icon: "sparkles", description: "Visual content creation for brands and businesses — product shoots, promotional videos, and social media content.", features: ["Product Photography", "Promo Videos", "Social Media Content", "Brand Identity", "Event Coverage"] },
-        ],
-        projects: [
-            { title: "Cinematic Landscapes", category: "Landscape", year: "2025", description: "Wide cinematic frames capturing mood, depth, and atmosphere across outdoor locations.", thumbnail: "/gallery/cinematic-landscape.jpg", gallery: ["/gallery/cinematic-landscape.jpg", "/gallery/model-landscape-3.jpg", "/gallery/story-portrait.jpg"] },
-            { title: "Golden Hour Session", category: "Model Shoot", year: "2025", description: "Professional model photography captured during golden hour — warm tones, natural light, and cinematic framing across outdoor locations.", thumbnail: "/gallery/model-landscape-1.jpg", gallery: ["/gallery/model-landscape-1.jpg", "/gallery/model-landscape-2.jpg", "/gallery/model-portrait-1.jpg", "/gallery/model-portrait-2.jpg", "/gallery/model-portrait-3.jpg", "/gallery/model-portrait-4.jpg", "/gallery/model-landscape-3.jpg"] },
-            { title: "Creative Portraits", category: "Model Shoot", year: "2025", description: "Artistic portrait session with bold compositions, dramatic lighting, and expressive poses — pushing the boundaries of creative photography.", thumbnail: "/gallery/creative-portrait-1.jpg", gallery: ["/gallery/creative-portrait-1.jpg", "/gallery/creative-portrait-2.jpg", "/gallery/creative-portrait-3.jpg", "/gallery/creative-portrait-4.jpg", "/gallery/creative-portrait-5.jpg", "/gallery/creative-portrait-6.jpg"] },
-            { title: "Editorial Collection", category: "Model Shoot", year: "2025", description: "Curated editorial portraits with refined color grading, mood-driven tones, and fashion-forward styling for social media and print.", thumbnail: "/gallery/edited-post-1.jpg", gallery: ["/gallery/edited-post-1.jpg", "/gallery/edited-post-2.jpg", "/gallery/edited-post-3.jpg", "/gallery/edited-post-4.jpg", "/gallery/edited-post-5.jpg", "/gallery/edited-post-6.jpg"] },
-            { title: "Behind the Lens", category: "Candid", year: "2024", description: "Raw, unposed moments captured between takes — the authentic side of every shoot, from candid expressions to natural interactions.", thumbnail: "/gallery/candid-portrait-1.jpg", gallery: ["/gallery/candid-portrait-1.jpg", "/gallery/candid-portrait-2.jpg", "/gallery/square-portrait-1.jpg", "/gallery/square-portrait-2.jpg"] },
-        ],
-        socialInstagram: "",
-        socialYouTube: "",
-        contactEmail: "framesofnevil@gmail.com",
-        availability: "Currently booking for 2026",
-        showreelUrl: "",
-        instagramAccessToken: "",
-        cloudinaryCloudName: "",
-        cloudinaryUploadPreset: "",
-        gallery: [
-            { type: "photo", url: "/gallery/model-portrait-1.jpg", thumbnail: "/gallery/model-portrait-1.jpg", title: "Model Portrait" },
-            { type: "photo", url: "/gallery/model-portrait-2.jpg", thumbnail: "/gallery/model-portrait-2.jpg", title: "Portrait Session" },
-            { type: "photo", url: "/gallery/model-landscape-1.jpg", thumbnail: "/gallery/model-landscape-1.jpg", title: "Golden Light" },
-            { type: "photo", url: "/gallery/model-landscape-2.jpg", thumbnail: "/gallery/model-landscape-2.jpg", title: "On Location" },
-            { type: "photo", url: "/gallery/creative-portrait-1.jpg", thumbnail: "/gallery/creative-portrait-1.jpg", title: "Creative Portrait" },
-            { type: "photo", url: "/gallery/creative-portrait-2.jpg", thumbnail: "/gallery/creative-portrait-2.jpg", title: "Artistic Vision" },
-            { type: "photo", url: "/gallery/creative-portrait-3.jpg", thumbnail: "/gallery/creative-portrait-3.jpg", title: "Studio Light" },
-            { type: "photo", url: "/gallery/edited-post-1.jpg", thumbnail: "/gallery/edited-post-1.jpg", title: "Editorial" },
-            { type: "photo", url: "/gallery/edited-post-2.jpg", thumbnail: "/gallery/edited-post-2.jpg", title: "Mood" },
-            { type: "photo", url: "/gallery/edited-post-3.jpg", thumbnail: "/gallery/edited-post-3.jpg", title: "Composition" },
-            { type: "photo", url: "/gallery/cinematic-landscape.jpg", thumbnail: "/gallery/cinematic-landscape.jpg", title: "Cinematic" },
-            { type: "photo", url: "/gallery/story-portrait.jpg", thumbnail: "/gallery/story-portrait.jpg", title: "Story" },
-            { type: "photo", url: "/gallery/model-portrait-3.jpg", thumbnail: "/gallery/model-portrait-3.jpg", title: "Elegance" },
-            { type: "photo", url: "/gallery/model-portrait-4.jpg", thumbnail: "/gallery/model-portrait-4.jpg", title: "Poise" },
-            { type: "photo", url: "/gallery/creative-portrait-4.jpg", thumbnail: "/gallery/creative-portrait-4.jpg", title: "Expression" },
-            { type: "photo", url: "/gallery/creative-portrait-5.jpg", thumbnail: "/gallery/creative-portrait-5.jpg", title: "Silhouette" },
-            { type: "photo", url: "/gallery/creative-portrait-6.jpg", thumbnail: "/gallery/creative-portrait-6.jpg", title: "Contrast" },
-            { type: "photo", url: "/gallery/model-landscape-3.jpg", thumbnail: "/gallery/model-landscape-3.jpg", title: "Wide Shot" },
-            { type: "photo", url: "/gallery/edited-post-4.jpg", thumbnail: "/gallery/edited-post-4.jpg", title: "Tones" },
-            { type: "photo", url: "/gallery/edited-post-5.jpg", thumbnail: "/gallery/edited-post-5.jpg", title: "Warmth" },
-            { type: "photo", url: "/gallery/edited-post-6.jpg", thumbnail: "/gallery/edited-post-6.jpg", title: "Detail" },
-            { type: "photo", url: "/gallery/square-portrait-1.jpg", thumbnail: "/gallery/square-portrait-1.jpg", title: "Focus" },
-            { type: "photo", url: "/gallery/candid-portrait-1.jpg", thumbnail: "/gallery/candid-portrait-1.jpg", title: "Candid" },
-            { type: "photo", url: "/gallery/candid-portrait-2.jpg", thumbnail: "/gallery/candid-portrait-2.jpg", title: "Natural" },
-            { type: "photo", url: "/gallery/square-portrait-2.jpg", thumbnail: "/gallery/square-portrait-2.jpg", title: "Frame" },
-        ],
-    },
-
-    repoVisibility: [
-        { name: "Portfolio", visible: false },
-        { name: "Weather-App", visible: true },
-        { name: "EverTrack", visible: true },
-        { name: "Restaurant", visible: true },
-        { name: "paradise-wallpaper", visible: true },
-        { name: "deutsch-easy-play", visible: true },
-        { name: "FreshMart", visible: true },
-        { name: "codingsols", visible: true },
-        { name: "the-Air-Cafe", visible: true },
-        { name: "nevil-codes", visible: false },
-        { name: "brew", visible: false },
+    projects: [
+        {
+            title: "QLess",
+            category: "Applied Systems",
+            tagline: "Real-time queue coordination product with room for predictive scheduling.",
+            description:
+                "Built to reduce customer confusion around wait times and improve service coordination through live updates and structured queue logic.",
+            url: "https://github.com/nevil-codes/QLess",
+            problem:
+                "Customers and staff both suffer when queue status is opaque and manual.",
+            model:
+                "Rule-based scheduling and event-driven updates today; demand prediction module planned for future ML extension.",
+            metrics: [
+                { label: "Stage", value: "In Development" },
+                { label: "Output", value: "Live Queue State" },
+                { label: "Goal", value: "Better Wait-Time Visibility" },
+            ],
+            tools: ["JavaScript", "React", "Node.js"],
+            languages: ["JavaScript", "React", "Node.js"],
+            stars: 0,
+            visible: true,
+        },
+        {
+            title: "Weather-App",
+            category: "Data Product",
+            tagline: "Forecast visualization app focused on clean presentation of external data.",
+            description:
+                "Weather application that turns raw forecast API responses into a readable interface with quick location-based lookup.",
+            url: "https://github.com/nevil-codes/Weather-App",
+            problem:
+                "Raw weather data is noisy for end users without clean filtering and presentation.",
+            model:
+                "No ML model in current version; project focuses on external data ingestion, UI clarity, and frontend data handling.",
+            metrics: [
+                { label: "Type", value: "Frontend Data App" },
+                { label: "Focus", value: "API Integration" },
+                { label: "Output", value: "Readable Forecast UI" },
+            ],
+            tools: ["JavaScript", "HTML", "CSS"],
+            languages: ["JavaScript", "HTML", "CSS"],
+            stars: 0,
+            visible: true,
+        },
     ],
 };
 

@@ -11,7 +11,7 @@
     "linkedin": "https://www.linkedin.com/in/nevil-amraniya-51b202317/",
     "leetcode": "https://leetcode.com/NickNeverLose",
     "hackerrank": "https://www.hackerrank.com/NickNeverLose",
-    "email": "nevilcreates@gmail.com"
+    "email": "nevil@nevilamraniya.de"
   },
   "resumeUrl": "/resume",
   "hero": {
@@ -32,21 +32,21 @@
       "lang": "Python",
       "desc": "Analyzed German rail delay data: cleaning, aggregation, and statistical analysis of delay patterns by route and time of day, with visualizations of key findings.",
       "meta": "data analysis project",
-      "url": "https://github.com/nevil-codes"
+      "url": "https://github.com/nevil-codes/db-delay-analysis"
     },
     {
       "name": "QLess",
       "lang": "Java / Android",
       "desc": "Android app enabling users to compare product prices across stores, reserve items, and collect in person; real-time data sync via Firebase.",
       "meta": "smart price comparison app",
-      "url": "https://github.com/nevil-codes"
+      "url": "https://github.com/nevil-codes/qless"
     },
     {
       "name": "EverTrack",
       "lang": "Python",
       "desc": "Tracks daily habits and personal expenses with structured data storage and summary reporting.",
       "meta": "habit & expense tracker",
-      "url": "https://github.com/nevil-codes"
+      "url": "https://github.com/nevil-codes/evertrack"
     }
   ],
   "stack": [

@@ -1,0 +1,18 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background: #0e0e0d;
+  color: #e9e7e2;
+  -webkit-font-smoothing: antialiased;
+}
+
+::selection {
+  background: #f59e0b;
+  color: #0e0e0d;
+}

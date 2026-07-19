@@ -10,7 +10,7 @@ export const metadata = {
 export default function Resume() {
   return (
     <main className="min-h-screen bg-white text-neutral-900 font-sans">
-      <div className="max-w-[760px] mx-auto px-8 py-12 print:py-6">
+      <div className="max-w-[760px] mx-auto px-5 sm:px-8 py-12 print:py-6">
         <div className="flex items-center justify-between mb-10 print:hidden">
           <Link href="/" className="font-mono text-[13px] text-neutral-500 no-underline hover:text-neutral-900">
             ← back to site
@@ -38,7 +38,7 @@ export default function Resume() {
         <Section title="Education">
           {education.map((e) => (
             <div key={e.degree} className="mb-4 last:mb-0">
-              <div className="flex justify-between items-baseline gap-4">
+              <div className="flex flex-wrap justify-between items-baseline gap-x-4 gap-y-1">
                 <span className="font-semibold text-[15px]">{e.degree}</span>
                 <span className="font-mono text-[12px] text-neutral-500 whitespace-nowrap">{e.years}</span>
               </div>
@@ -50,7 +50,7 @@ export default function Resume() {
         <Section title="Projects">
           {projects.map((p) => (
             <div key={p.name} className="mb-4 last:mb-0">
-              <div className="flex justify-between items-baseline gap-4">
+              <div className="flex flex-wrap justify-between items-baseline gap-x-4 gap-y-1">
                 <span className="font-semibold text-[15px]">{p.name}</span>
                 <span className="font-mono text-[12px] text-neutral-500 whitespace-nowrap">{p.lang}</span>
               </div>
@@ -63,11 +63,11 @@ export default function Resume() {
           <Section title="Certifications">
             {certifications.map((c) => (
               <div key={c.name} className="mb-3 last:mb-0">
-                <div className="flex justify-between items-baseline gap-4">
+                <div className="flex flex-wrap justify-between items-baseline gap-x-4 gap-y-1">
                   <span className="font-semibold text-[15px]">{c.name}</span>
                   <span className="font-mono text-[12px] text-neutral-500 whitespace-nowrap">{c.year}</span>
                 </div>
-                <div className="flex justify-between items-baseline gap-4 text-[14px] text-neutral-600">
+                <div className="flex flex-wrap justify-between items-baseline gap-x-4 gap-y-1 text-[14px] text-neutral-600">
                   <span>{c.issuer}</span>
                   <a href={c.verifyUrl} className="font-mono text-[12px] text-neutral-500 no-underline hover:text-neutral-900 print:hidden">
                     verify →

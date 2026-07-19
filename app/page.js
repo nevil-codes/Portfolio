@@ -11,7 +11,7 @@ export default function Home() {
   return (
     <>
       <Nav />
-      <div id="top" className="max-w-content mx-auto px-12">
+      <div id="top" className="max-w-content mx-auto px-5 sm:px-8 md:px-12">
         <Hero />
         <Projects />
         <Stack />
